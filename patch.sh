@@ -28,7 +28,7 @@ function main ()
         fi;
         echo "Yum update complete";
         if [[ $REBOOT -eq 1 ]]; then
-          echo reboot;
+          reboot;
         fi;
       else
         echo "Yum update failed";
