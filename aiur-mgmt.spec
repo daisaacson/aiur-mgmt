@@ -1,5 +1,5 @@
 Name: aiur-mgmt
-Version: 0.1	
+Version: 0.2	
 Release: 1%{?dist}
 Summary: Aiur Management
 
@@ -36,5 +36,7 @@ install -pm 0755 sslComponent.py $RPM_BUILD_ROOT%{_bindir}/assl
 
 
 %changelog
+* Wed Sep 24 2014 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.2-1
+- Uncomment reboot on patch.sh
 * Fri Sep 5 2014 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.1-1
 - Initial build
