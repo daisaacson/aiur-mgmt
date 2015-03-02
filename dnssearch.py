@@ -1,8 +1,7 @@
 #!/usr/bin/env /usr/bin/python
 __version__ = 0.1
-import sys, re, time, os.path
+import sys, re, time, os, subprocess
 from optparse import OptionParser, OptionGroup
-from subprocess import Popen, PIPE, STDOUT
 
 DUMPFILE = ""
 TIMEOUT = 30
@@ -56,19 +55,33 @@ def dnssearch (search):
           if options.verbose: print "need to find ptr", arpa
           dnssearch(arpa)
 
-def rndc():
-  # Last modification of DUMPFILE
-  mtime = os.stat(DUMPFILE).st_mtime
+# Get modify time of file, if not exist, return 0
+def mtime(f):
   try:
-    # Tell named to create a dump file of zones
-    p = Popen(["rndc", "dumpdb", "-zones"]) #, stdout=PIPE, stdin=PIPE)
+    return os.stat(f).st_mtime
+  except:
+    return 0
+
+# Run rndc and wait for dumpfile to be output
+def rndc():
+  o = ""
+  # Last modification of DUMPFILE
+  ftime = mtime(DUMPFILE)
+  # Tell named to create a dump file of zones
+  try:
+    subprocess.Popen(['rndc', 'dumpdb', '-zones'])
   except:
     raise
   # Start time
   stime = time.time()
-  # Wait for DUMPFILE to be modified
-  while mtime == os.stat(DUMPFILE).st_mtime:
-    time.sleep(0.1)
+  # Wait for DUMPFILE to be modified and dump to complete
+  while ftime >= mtime(DUMPFILE) or not o == "; Dump complete":
+    try:
+      p = subprocess.Popen(["tail", "-n", "1", DUMPFILE], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      o = p.communicate()[0].strip()
+    except:
+      pass
+    time.sleep(0.001)
     # Timeout if we are wating too long
     if time.time() - stime >= TIMEOUT:
       raise ValueError("Timeout", TIMEOUT, DUMPFILE)
@@ -81,10 +94,6 @@ def main(a):
 
   try:
     rndc()
-  except ValueError as e:
-    print e[0], "after waiting", e[1], "seconds for", e[2]
-
-  try:
     # Open the DUMPFILE readonly
     with open(DUMPFILE, 'r') as dumpfile:
       # Read all dnsrecords that don't begin with ';'
@@ -93,14 +102,18 @@ def main(a):
       ## Split words into list. 
       ### dnsrecords is a list of recod lists
       dnsrecords = [line.lower().strip().split() for line in dumpfile if not line.startswith(';')]
+      if options.debug: print dnsrecords
     dumpfile.close()
+    os.remove(DUMPFILE)
   except IOError as e:
     print "I/O error({0}): {1}".format(e.errno, e.strerror)
+    raise
+  except ValueError as e:
+    print e[0], "after waiting", e[1], "seconds for", e[2]
     raise
   except:
     print "Unexpected error:", sys.exc_info()[0]
     raise
-  if options.debug: print dnsrecords
 
   # Create regex object
   regex = re.compile(SEARCH, re.I)
@@ -118,7 +131,7 @@ def main(a):
     dnssearch(recorditem)
 
   # Print our findings
-  print "Results for:", SEARCH
+  print "Results on", os.uname()[1], "for:", SEARCH
   for i, result in enumerate(results):
     print str(i+1).rjust(len(str(len(results))))+":",
     print ' '.join(str(r) for r in result)
