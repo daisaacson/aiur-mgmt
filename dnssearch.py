@@ -10,14 +10,14 @@ results = []
 rrtypes = ['a','aaaa','cname','dname','mx','ptr']
 
 # 1 list of 8 dns records, each dns record contains a list of record items
-## [['owner-name', 'ttl', 'class', 'a',     'ipv4'                                                           ],
-##  ['name',       'ttl', 'class', 'aaaa',  'ipv6'                                                           ], 
-##  ['name',       'ttl', 'class', 'cname', 'cononical name'                                                 ],
-##  ['owner-name', 'ttl', 'class', 'dname', 'redirection-name'                                               ],
-##  ['owner-name', 'ttl', 'class', 'mx',    'pref',            'name'                                        ],
-##  ['owner-name', 'ttl', 'class', 'ns',    'target-name'                                                    ],
-##  ['name',       'ttl', 'class', 'ptr',   'name'                                                           ],
-##  ['owner-name', 'ttl', 'class', 'soa',   'name-server',     'email-addr', 'sn', 'ref', 'ret', 'ex', 'min' ]]
+## [['owner-name', 'ttl', 'class', 'a',     '',     'ipv4'                                                           ],
+##  ['name',       'ttl', 'class', 'aaaa',  '',     'ipv6'                                                           ], 
+##  ['name',       'ttl', 'class', 'cname', '',     'cononical name'                                                 ],
+##  ['owner-name', 'ttl', 'class', 'dname', '',     'redirection-name'                                               ],
+##  ['owner-name', 'ttl', 'class', 'mx',    'pref', 'name'                                                           ],
+##  ['owner-name', 'ttl', 'class', 'ns',    '',     'target-name'                                                    ],
+##  ['name',       'ttl', 'class', 'ptr',   '',     'name'                                                           ],
+##  ['owner-name', 'ttl', 'class', 'soa',   '',     'name-server',     'email-addr', 'sn', 'ref', 'ret', 'ex', 'min' ]]
 
 # Locations of interest by index
 ## a     0, 4, -1
@@ -42,6 +42,9 @@ def dnssearch (search):
       # If we have a match that we haven't found before
       if not dnsrecord in results:
         if options.verbose: print "adding: ", dnsrecord 
+        # Insert column in non mx records to account for pref field
+        if len(dnsrecord) == 5:
+          dnsrecord.insert(4,'')
         # Add dns record to our results list
         results.append(dnsrecord)
         # Remove dns record from your dns records lists, so recursive matches don't have to reiterate over already found dns records
@@ -86,6 +89,23 @@ def rndc():
     if time.time() - stime >= TIMEOUT:
       raise ValueError("Timeout", TIMEOUT, DUMPFILE)
 
+# Get the longest lenght for each column
+def listmaxcollen(l):
+  tl = []
+  for r in l:
+    tl.append(map(len, r))
+  return [max(a) for a in zip(*tl)]
+
+# Print results in a grid form
+def printresults(rs):
+  columnlengths=listmaxcollen(rs)
+  if options.debug: print columnlengths
+  for i, result in enumerate(rs):
+    print str(i+1).rjust(len(str(len(rs))))+":",
+    for j, r in enumerate(result):
+      print r.ljust(columnlengths[j]),
+    print
+
 def main(a):
   global dnsrecords
   global DUMPFILE
@@ -123,7 +143,6 @@ def main(a):
   recorditems =  [line[0] for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[0])]
   recorditems += [line[-1] for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[-1])]
 
-
   # For each record item, start a search for dns records
   if options.verbose: print set(recorditems)
   for recorditem in set(recorditems):
@@ -132,9 +151,7 @@ def main(a):
 
   # Print our findings
   print "Results on", os.uname()[1], "for:", SEARCH
-  for i, result in enumerate(results):
-    print str(i+1).rjust(len(str(len(results))))+":",
-    print ' '.join(str(r) for r in result)
+  printresults(results)
 
 if __name__ == '__main__':
   description = "DNS Searcher"
