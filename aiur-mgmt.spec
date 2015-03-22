@@ -1,5 +1,5 @@
 Name: aiur-mgmt
-Version: 0.2	
+Version: 0.4
 Release: 1%{?dist}
 Summary: Aiur Management
 
@@ -25,9 +25,10 @@ Aiur Managment - A collection of scripts and commands
 %install
 rm -rf $RPM_BUILD_ROOT
 install -m 0755 -d $RPM_BUILD_ROOT%{_bindir}
-install -pm 0755 patch.sh $RPM_BUILD_ROOT%{_bindir}/ayum
+install -pm 0755 apatch.sh $RPM_BUILD_ROOT%{_bindir}/ayum
 install -pm 0755 b64.py $RPM_BUILD_ROOT%{_bindir}/ab64
 install -pm 0755 sslComponent.py $RPM_BUILD_ROOT%{_bindir}/assl
+install -pm 0755 dnssearch.py $RPM_BUILD_ROOT%{_bindir}/dnssearch
 
 
 %files
@@ -36,6 +37,10 @@ install -pm 0755 sslComponent.py $RPM_BUILD_ROOT%{_bindir}/assl
 
 
 %changelog
+* Sat Mar 21 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4-1
+- Added dnssearch script
+* Mon Jan 5 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.3-1
+- Improvements to ayum
 * Wed Sep 24 2014 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.2-1
 - Uncomment reboot on patch.sh
 * Fri Sep 5 2014 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.1-1
