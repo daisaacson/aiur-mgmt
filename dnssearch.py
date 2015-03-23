@@ -1,6 +1,6 @@
 #!/usr/bin/env /usr/bin/python
 __version__ = 0.1
-import sys, re, time, os, subprocess
+import sys, re, time, os, subprocess, itertools
 from optparse import OptionParser, OptionGroup
 
 DUMPFILE = ""
@@ -10,14 +10,14 @@ results = []
 rrtypes = ['a','aaaa','cname','dname','mx','ptr']
 
 # 1 list of 8 dns records, each dns record contains a list of record items
-## [['owner-name', 'ttl', 'class', 'a',     '',     'ipv4'                                                           ],
-##  ['name',       'ttl', 'class', 'aaaa',  '',     'ipv6'                                                           ], 
-##  ['name',       'ttl', 'class', 'cname', '',     'cononical name'                                                 ],
-##  ['owner-name', 'ttl', 'class', 'dname', '',     'redirection-name'                                               ],
-##  ['owner-name', 'ttl', 'class', 'mx',    'pref', 'name'                                                           ],
-##  ['owner-name', 'ttl', 'class', 'ns',    '',     'target-name'                                                    ],
-##  ['name',       'ttl', 'class', 'ptr',   '',     'name'                                                           ],
-##  ['owner-name', 'ttl', 'class', 'soa',   '',     'name-server',     'email-addr', 'sn', 'ref', 'ret', 'ex', 'min' ]]
+## [['owner-name', 'ttl', 'class', 'a',     'ipv4'                                                           ],
+##  ['name',       'ttl', 'class', 'aaaa',  'ipv6'                                                           ], 
+##  ['name',       'ttl', 'class', 'cname', 'cononical name'                                                 ],
+##  ['owner-name', 'ttl', 'class', 'dname', 'redirection-name'                                               ],
+##  ['owner-name', 'ttl', 'class', 'mx',    'pref', 'name'                                                   ],
+##  ['owner-name', 'ttl', 'class', 'ns',    'target-name'                                                    ],
+##  ['name',       'ttl', 'class', 'ptr',   'name'                                                           ],
+##  ['owner-name', 'ttl', 'class', 'soa',   'name-server',     'email-addr', 'sn', 'ref', 'ret', 'ex', 'min' ]]
 
 # Locations of interest by index
 ## a     0, 4, -1
@@ -42,9 +42,6 @@ def dnssearch (search):
       # If we have a match that we haven't found before
       if not dnsrecord in results:
         if options.verbose: print "adding: ", dnsrecord 
-        # Insert column in non mx records to account for pref field
-        if len(dnsrecord) == 5:
-          dnsrecord.insert(4,'')
         # Add dns record to our results list
         results.append(dnsrecord)
         # Remove dns record from your dns records lists, so recursive matches don't have to reiterate over already found dns records
@@ -94,14 +91,22 @@ def listmaxcollen(l):
   tl = []
   for r in l:
     tl.append(map(len, r))
-  return [max(a) for a in zip(*tl)]
+  return [max(a) for a in itertools.izip_longest(*tl)]
 
 # Print results in a grid form
 def printresults(rs):
   columnlengths=listmaxcollen(rs)
-  if options.debug: print columnlengths
+  # Adjust columnlengths with mx records
+  if len(columnlengths) == 6:
+    columnlengths[4] = 2
+  if options.debug: print rs, columnlengths
   for i, result in enumerate(rs):
+    # Print line numbers
     print str(i+1).rjust(len(str(len(rs))))+":",
+    # Adjust columnlengths with mx records
+    if len(columnlengths) == 6 and result[3] != 'mx':
+      result.insert(4, '')
+    # Print each column entry
     for j, r in enumerate(result):
       print r.ljust(columnlengths[j]),
     print
