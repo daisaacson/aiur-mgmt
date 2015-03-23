@@ -1,6 +1,6 @@
 Name: aiur-mgmt
 Version: 0.4
-Release: 1%{?dist}
+Release: 2%{?dist}
 Summary: Aiur Management
 
 Group: Applications/System
@@ -37,6 +37,8 @@ install -pm 0755 dnssearch.py $RPM_BUILD_ROOT%{_bindir}/dnssearch
 
 
 %changelog
+* Sun Mar 22 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4-2
+- Cleaned up dnssearch output
 * Sat Mar 21 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4-1
 - Added dnssearch script
 * Mon Jan 5 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.3-1
