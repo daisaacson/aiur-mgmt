@@ -44,8 +44,6 @@ def dnssearch (search):
         if options.verbose: print "adding: ", dnsrecord 
         # Add dns record to our results list
         results.append(dnsrecord)
-        # Remove dns record from your dns records lists, so recursive matches don't have to reiterate over already found dns records
-        dnsrecords.remove(dnsrecord)
         # For the found dns record, use the first and last record item to recusivley search for more results
         dnssearch(dnsrecord[0])
         dnssearch(dnsrecord[-1])
