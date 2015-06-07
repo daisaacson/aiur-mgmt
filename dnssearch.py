@@ -80,7 +80,7 @@ def rndc():
     except:
       pass
     time.sleep(0.001)
-    # Timeout if we are wating too long
+    # Timeout if we are waiting too long
     if time.time() - stime >= TIMEOUT:
       raise ValueError("Timeout", TIMEOUT, DUMPFILE)
 
@@ -116,6 +116,7 @@ def main(a):
   DUMPFILE = a[1]
 
   try:
+    fexist= mtime(DUMPFILE)
     rndc()
     # Open the DUMPFILE readonly
     with open(DUMPFILE, 'r') as dumpfile:
@@ -127,7 +128,9 @@ def main(a):
       dnsrecords = [line.lower().strip().split() for line in dumpfile if not line.startswith(';')]
       if options.debug: print dnsrecords
     dumpfile.close()
-    os.remove(DUMPFILE)
+    # Clean up file if it didn't exist prior to running
+    if fexist == 0:
+      os.remove(DUMPFILE)
   except IOError as e:
     print "I/O error({0}): {1}".format(e.errno, e.strerror)
     raise
@@ -150,22 +153,27 @@ def main(a):
   if options.verbose: print set(recorditems)
   for recorditem in set(recorditems):
     if options.verbose: print "looking for: ", recorditem
-    dnssearch(recorditem)
+    try:
+      dnssearch(recorditem)
+    except RuntimeEror as e:
+      results.append(["Error: Too many results:", e[0]])
+    except:
+      results.append(["Error:", sys.exc_info()[1]])
 
   # Print our findings
   print "Results on", os.uname()[1], "for:", SEARCH
-  printresults(results)
+  if results:
+    printresults(results)
+  else:
+    print "0: Search for " + SEARCH + " found 0 results"
 
 if __name__ == '__main__':
   description = "DNS Searcher"
   usage = "usage: %prog [options] search file"
   version = "%prog " + str(__version__)
   parser = OptionParser(usage=usage, description=description, version=version)
-  if sys.hexversion >= 33949424: # 2.6
-    epilog = "Recursively serch for dns recores on a dns server"
-    parser = OptionParser(usage=usage, description=description, epilog=epilog, version=version)
-  else:
-    parser = OptionParser(usage=usage, description=description, version=version)
+  epilog = "Recursively serch for dns recores on a dns server"
+  parser = OptionParser(usage=usage, description=description, epilog=epilog, version=version)
   group = OptionGroup(parser, "Debug Options")
   group.add_option("-v", "--verbose", action="store_true", help="Print Verbose") 
   group.add_option("-d", "--debug", action="store_true", help="Print debug")

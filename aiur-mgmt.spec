@@ -29,6 +29,7 @@ install -pm 0755 apatch.sh $RPM_BUILD_ROOT%{_bindir}/ayum
 install -pm 0755 b64.py $RPM_BUILD_ROOT%{_bindir}/ab64
 install -pm 0755 sslComponent.py $RPM_BUILD_ROOT%{_bindir}/assl
 install -pm 0755 dnssearch.py $RPM_BUILD_ROOT%{_bindir}/dnssearch
+install -pm 0755 modem-status.py $RPM_BUILD_ROOT%{_bindir}/modem-status
 
 
 %files
