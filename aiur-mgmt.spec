@@ -1,5 +1,5 @@
 Name: aiur-mgmt
-Version: 0.4.1
+Version: 0.4.2
 Release: 1%{?dist}
 Summary: Aiur Management
 
@@ -38,6 +38,8 @@ install -pm 0755 modem-status.py $RPM_BUILD_ROOT%{_bindir}/modem-status
 
 
 %changelog
+* Fri Jul 10 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.2-1
+- Improvments to ayum
 * Sun Mar 22 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.1-1
 - Cleaned up dnssearch output
 * Sat Mar 21 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4-1

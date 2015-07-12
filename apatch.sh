@@ -7,16 +7,24 @@
 #  4 - Yum list updates failed
 #  8 - Yum update failed
 
-function aiurpatchhelp ()
-{
+# Thanks
+## bbbco - http://stackoverflow.com/questions/5719030/bash-silently-kill-background-function-process
+
+# Bugs
+## Output from yum list does not show packages installed due to dependencies or packages removed.
+
+# Print Help
+patchhelp () 
+{ 
     echo "Usage: $0 [options]... [package]...";
     echo "options:";
-    echo " -b  print <br> tags";
+    echo " -b  print <br> tags, useful for html outputs";
     echo " -r  reboot"
 }
 
-function aiurpatchprint ()
-{
+# Print output, adding <br> if output is on web page
+patchprint () 
+{ 
     if [[ $HTML -eq 1 ]]; then
         echo "$@" | sed 's/$/<br>/gm';
     else
@@ -24,50 +32,115 @@ function aiurpatchprint ()
     fi
 }
 
-function aiurpatchyum ()
-{
+# Print a progress bar.  Helps keep ssh sessions from timing out
+startprogress () 
+{ 
+    unit="${1:-.}";
+    delay="${2:-1}";
+    while :; do
+        echo -n "$unit";
+        sleep "$delay";
+    done
+}
+
+# Stop printing progess bar
+stopprogress () 
+{ 
+    kill -9 "$1" 2> /dev/null;
+    wait "$1" 2> /dev/null
+}
+
+# Yum clean
+yumclean () 
+{ 
+    local RETVAL=0;
+    echo -n "Cleaning: ";
+    startprogress "c" & pid=$!;
+    trap "stopprogress $pid; exit" INT TERM EXIT;
+    YUMCLEAN=$(yum --quiet clean all 2>&1);
+    RETVAL=$?;
+    stopprogress $pid;
+    patchprint;
+    trap - INT TERM EXIT;
+    return $RETVAL
+}
+
+# Yum list
+yumlist () 
+{ 
+    local RETVAL=0;
+    echo -n "Listing: ";
+    startprogress "l" & pid=$!;
+    trap "stopprogress $pid; exit" INT TERM EXIT;
+    YUMLIST=$(yum --quiet list updates $@ 2>&1);
+    RETVAL=$?;
+    stopprogress $pid;
+    patchprint;
+    trap - INT TERM EXIT;
+    return $RETVAL
+}
+
+# Yum update
+yumupdate () 
+{ 
+    local RETVAL=0;
+    echo -n "Updating: ";
+    startprogress "u" & pid=$!;
+    trap "stopprogress $pid; exit" INT TERM EXIT;
+    YUMUPDATE=$(yum -y --quiet update $@ 2>&1);
+    RETVAL=$?;
+    stopprogress $pid;
+    patchprint;
+    trap - INT TERM EXIT;
+    return $RETVAL
+}
+
+# Yum patch process
+patchyum () 
+{ 
     set -o pipefail;
-    if YUMCLEAN=$(yum --quiet clean all 2>&1); then
-        if YUMLIST=$(yum --quiet list updates $@ 2>&1); then
-            if YUMUPDATE=$(yum -y --quiet update $@ 2>&1); then
+    if yumclean; then
+        if yumlist "$@"; then
+            if yumupdate "$@"; then
                 if [[ "$YUMLIST" != "" ]]; then
-                    aiurpatchprint "$YUMLIST";
+                    patchprint "$YUMLIST";
                 else
-                    aiurpatchprint "No updates available";
+                    patchprint "No updates available";
                 fi;
-                aiurpatchprint "yum update complete";
-                aiurpatchprint "OKAY";
+                patchprint "yum update complete";
+                if [[ $REBOOT -eq 0 ]]; then
+                    patchprint "OKAY";
+                fi;
             else
-                aiurpatchprint "$YUMLIST";
-                aiurpatchprint "$YUMUPDATE";
-                aiurpatchprint "yum update failed";
-                aiurpatchprint "FAILED";
+                patchprint "$YUMUPDATE";
+                patchprint "yum update failed";
+                patchprint "FAILED";
                 RETVAL=$((RETVAL+8));
             fi;
         else
-            aiurpatchprint "$YUMLIST";
-            aiurpatchprint "yum list updates $@ failed";
-            aiurpatchprint "FAILED";
+            patchprint "$YUMLIST";
+            patchprint "yum list updates $@ failed";
+            patchprint "FAILED";
             RETVAL=$((RETVAL+4));
         fi;
     else
-        aiurpatchprint "$YUMCLEAN";
-        aiurpatchprint "yum clean failed";
-        aiurpatchprint "FAILED";
+        patchprint "$YUMCLEAN";
+        patchprint "yum clean failed";
+        patchprint "FAILED";
         RETVAL=$((RETVAL+2));
     fi
 }
 
-function aiurpatchup2date ()
+function patchup2date ()
 {
     if UP2DATE=$(up2date -u 2>&1); then
-        aiurpatchprint "$UP2DATE";
-        aiurpatchprint "up2date -u complete";
-        aiurpatchprint "OKAY";
+        patchprint "$UP2DATE";
+        patchprint "up2date -u complete";
+        patchprint "OKAY";
     else
-        aiurpatchprint "$UP2DATE";
-        aiurpatchprint "up2date -u failed";
-        aiurpatchprint "FAILED";
+        patchprint "$UP2DATE";
+        patchprint "up2date -u failed";
+        patchprint "FAILED";
         RETVAL=$((RETVAL+8));
     fi
 }
@@ -84,14 +157,20 @@ function detectup2date ()
 function main ()
 {
     if detectup2date; then
-        aiurpatchup2date "$@";
+        patchup2date "$@";
     else
-        aiurpatchyum "$@";
+        patchyum "$@";
     fi;
     if [[ $REBOOT -eq 1 && $RETVAL -eq 0 ]]; then
+        patchprint "Rebooting...";
+        patchprint "OKAY";
         reboot;
     fi
 }
+
+YUMCLEAN="";
+YUMLIST="";
+YUMUPDATE="";
 
 HTML=0;
 REBOOT=0;
@@ -105,11 +184,11 @@ while getopts ":br" opt; do
             REBOOT=1
         ;;
         \?)
-            aiurpatchhelp;
+            patchhelp;
             exit 1
         ;;
     esac;
 done;
 shift $((OPTIND - 1));
-main $@;
+main "$@";
 exit $RETVAL

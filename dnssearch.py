@@ -163,7 +163,8 @@ def main(a):
   # Print our findings
   print "Results on", os.uname()[1], "for:", SEARCH
   if results:
-    printresults(results)
+    if options.sort: printresults(sorted(results, key=lambda x: x[0].split('.')[::-1]))
+    else: printresults(results)
   else:
     print "0: Search for " + SEARCH + " found 0 results"
 
@@ -174,6 +175,7 @@ if __name__ == '__main__':
   parser = OptionParser(usage=usage, description=description, version=version)
   epilog = "Recursively serch for dns recores on a dns server"
   parser = OptionParser(usage=usage, description=description, epilog=epilog, version=version)
+  parser.add_option("-s", "--sort", action="store_true", help="Sort output by FQDN")
   group = OptionGroup(parser, "Debug Options")
   group.add_option("-v", "--verbose", action="store_true", help="Print Verbose") 
   group.add_option("-d", "--debug", action="store_true", help="Print debug")
