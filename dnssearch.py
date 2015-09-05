@@ -8,6 +8,7 @@ TIMEOUT = 30
 dnsrecords = []
 results = []
 rrtypes = ['a','aaaa','cname','dname','mx','ptr']
+norecurse = ['mx', 'ns', 'soa']
 
 # 1 list of 8 dns records, each dns record contains a list of record items
 ## [['owner-name', 'ttl', 'class', 'a',     'ipv4'                                                           ],
@@ -44,9 +45,10 @@ def dnssearch (search):
         if options.verbose: print "adding: ", dnsrecord 
         # Add dns record to our results list
         results.append(dnsrecord)
-        # For the found dns record, use the first and last record item to recusivley search for more results
-        dnssearch(dnsrecord[0])
-        dnssearch(dnsrecord[-1])
+        if dnsrecord[3] not in norecurse:
+          # For the found dns record, use the first and last record item to recusivley search for more results
+          dnssearch(dnsrecord[0])
+          dnssearch(dnsrecord[-1])
         # If dns record is an a record, search for ptr in the event the forward and reverse names doesn't match
         if dnsrecord[3] == 'a':
           arpa = '.'.join(dnsrecord[-1].split('.')[::-1]) + '.in-addr.arpa.'
