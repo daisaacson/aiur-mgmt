@@ -15,7 +15,7 @@ norecurse = ['mx', 'ns', 'soa']
 ##  ['name',       'ttl', 'class', 'aaaa',  'ipv6'                                                           ], 
 ##  ['name',       'ttl', 'class', 'cname', 'cononical name'                                                 ],
 ##  ['owner-name', 'ttl', 'class', 'dname', 'redirection-name'                                               ],
-##  ['owner-name', 'ttl', 'class', 'mx',    'pref', 'name'                                                   ],
+##  ['owner-name', 'ttl', 'class', 'mx',    'pref',            'name'                                        ],
 ##  ['owner-name', 'ttl', 'class', 'ns',    'target-name'                                                    ],
 ##  ['name',       'ttl', 'class', 'ptr',   'name'                                                           ],
 ##  ['owner-name', 'ttl', 'class', 'soa',   'name-server',     'email-addr', 'sn', 'ref', 'ret', 'ex', 'min' ]]
@@ -30,6 +30,7 @@ norecurse = ['mx', 'ns', 'soa']
 ## ptr   0, 4, -1
 ## soa   0, 4, -7
 
+# Search for DNS records that matched our search results
 def dnssearch (search):
   if options.debug: print "in dnssearch()"
   if options.verbose: print "searching for:", search
@@ -45,15 +46,20 @@ def dnssearch (search):
         if options.verbose: print "adding: ", dnsrecord 
         # Add dns record to our results list
         results.append(dnsrecord)
-        if dnsrecord[3] not in norecurse:
+        if options.recursive and dnsrecord[3] not in norecurse:
           # For the found dns record, use the first and last record item to recusivley search for more results
           dnssearch(dnsrecord[0])
           dnssearch(dnsrecord[-1])
         # If dns record is an a record, search for ptr in the event the forward and reverse names doesn't match
         if dnsrecord[3] == 'a':
-          arpa = '.'.join(dnsrecord[-1].split('.')[::-1]) + '.in-addr.arpa.'
+          arpa = get_arpa_address(dnsrecord[-1])
           if options.verbose: print "need to find ptr", arpa
           dnssearch(arpa)
+
+# Turn and IP address to and in-addr.arpa address
+def get_arpa_address(ip):
+  if options.verbose: print ip, "to arpa:", '.'.join(ip.split('.')[::-1]) + '.in-addr.arpa.'
+  return '.'.join(ip.split('.')[::-1]) + '.in-addr.arpa.'
 
 # Get modify time of file, if not exist, return 0
 def mtime(f):
@@ -86,7 +92,7 @@ def rndc():
     if time.time() - stime >= TIMEOUT:
       raise ValueError("Timeout", TIMEOUT, DUMPFILE)
 
-# Get the longest lenght for each column
+# Get the longest length for each column
 def listmaxcollen(l):
   tl = []
   for r in l:
@@ -111,15 +117,12 @@ def printresults(rs):
       print r.ljust(columnlengths[j]),
     print
 
-def main(a):
-  global dnsrecords
-  global DUMPFILE
-  SEARCH = a[0]
-  DUMPFILE = a[1]
-
+# Get Records from file
+def getrecords():
   try:
     fexist= mtime(DUMPFILE)
-    rndc()
+    if options.dumpdb:
+      rndc()
     # Open the DUMPFILE readonly
     with open(DUMPFILE, 'r') as dumpfile:
       # Read all dnsrecords that don't begin with ';'
@@ -142,27 +145,46 @@ def main(a):
   except:
     print "Unexpected error:", sys.exc_info()[0]
     raise
+  return dnsrecords
+
+def main(a):
+  global dnsrecords
+  global DUMPFILE
+  SEARCH = a[0]
+  DUMPFILE = a[1]
+
+  dnsrecords = getrecords()
 
   # Create regex object
   regex = re.compile(SEARCH, re.I)
 
-  # Search first and last record item of all the dns records using regular expression
-  ## Save record item to list of recorditmes
-  recorditems =  [line[0] for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[0])]
-  recorditems += [line[-1] for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[-1])]
+  if options.zone:
+    regex = re.compile(SEARCH+'\.$', re.I)
+    for dnsrecord in dnsrecords:
+      if regex.search(dnsrecord[0]): results.append(dnsrecord)
+  else: 
+    # Search first and last record item of all the dns records using regular expression
+    ## Save record item to list of recorditmes
+    recorditems =  [line[0]  for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[0])]
+    recorditems += [line[-1] for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[-1])]
+    # If the SEARCH items is an IP, look for in-addr.arpa record
+    regex_ip = re.compile('^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+    if regex_ip.match(SEARCH):
+      recorditems += [get_arpa_address(SEARCH)]
 
-  # For each record item, start a search for dns records
-  if options.verbose: print set(recorditems)
-  for recorditem in set(recorditems):
-    if options.verbose: print "looking for: ", recorditem
-    try:
-      dnssearch(recorditem)
-    except RuntimeEror as e:
-      results.append(["Error: Too many results:", e[0]])
-    except:
-      results.append(["Error:", sys.exc_info()[1]])
+    # For each record item, start a search for dns records
+    if options.verbose: print set(recorditems)
+    for recorditem in set(recorditems):
+      if options.verbose: print "looking for: ", recorditem
+      try:
+        dnssearch(recorditem)
+      except RuntimeEror as e:
+        results.append(["Error: Too many results:", e[0]])
+      except:
+        results.append(["Error:", sys.exc_info()[1]])
 
   # Print our findings
+  if options.verbose: print results
   print "Results on", os.uname()[1], "for:", SEARCH
   if results:
     if options.sort: printresults(sorted(results, key=lambda x: x[0].split('.')[::-1]))
@@ -177,12 +199,20 @@ if __name__ == '__main__':
   parser = OptionParser(usage=usage, description=description, version=version)
   epilog = "Recursively serch for dns recores on a dns server"
   parser = OptionParser(usage=usage, description=description, epilog=epilog, version=version)
+  parser.set_defaults(dumpdb=True)
+  parser.set_defaults(recursive=True)
+  parser.add_option("-d", "--dumpdb", action="store_true", help="Run rndc --dumpdb to get latest file")
+  parser.add_option("-n", "--no-dumpdb", action="store_false", dest="dumpdb", help="Run rndc --dumpdb to get latest file")
+  parser.add_option("-r", "--recursive", action="store_true", help="For each result, search for additional matches")
+  parser.add_option("-R", "--nonrecursive", action="store_false", dest="recursive", help="Do not recursivly search for mor matches")
   parser.add_option("-s", "--sort", action="store_true", help="Sort output by FQDN")
+  parser.add_option("-z", "--zone", action="store_true", default=False, help="Print zone content")
   group = OptionGroup(parser, "Debug Options")
   group.add_option("-v", "--verbose", action="store_true", help="Print Verbose") 
-  group.add_option("-d", "--debug", action="store_true", help="Print debug")
+  group.add_option("-D", "--debug", action="store_true", help="Print debug")
   parser.add_option_group(group)
   (options, args) = parser.parse_args()
+  if options.zone and options.sort: parser.error("options sorting of zone files is not supported yet.")
   if options.debug: options.verbose=True
   if options.debug: print "options " + str(options)
   if options.debug: print "args " + str(args)
