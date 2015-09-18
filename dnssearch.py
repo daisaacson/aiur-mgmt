@@ -80,8 +80,19 @@ def rndc():
     raise
   # Start time
   stime = time.time()
-  # Wait for DUMPFILE to be modified and dump to complete
-  while ftime >= mtime(DUMPFILE) or not o == "; Dump complete":
+
+  # These next two steps have to be independent, other wise a race condition occurs
+  ## We read the end of line of old dump file and it reads "; Dump complete"
+  ## named then starts writing to the dump file, not completing the dump, causing the conditon to pass
+  ## Therefore, these two test need to be independent
+  # Wait for DUMPFILE to be modified
+  while not mtime(DUMPFILE) > ftime:
+    time.sleep(0.001)
+    # Timeout if we are waiting too long
+    if time.time() - stime >= TIMEOUT:
+      raise ValueError("Timeout", TIMEOUT, DUMPFILE)
+  # Wait for DUMPFILE to complete
+  while not o == "; Dump complete":
     try:
       p = subprocess.Popen(["tail", "-n", "1", DUMPFILE], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       o = p.communicate()[0].strip()
