@@ -26,7 +26,7 @@ function main ()
 }
 
 pcount=1
-pwait=2
+pwait=1
 delay=2
 erase=0
 
@@ -95,4 +95,4 @@ while getopts ":c:d:w:e" opt; do
 done
 shift $((OPTIND-1));
 
-#main $@
+main $@
