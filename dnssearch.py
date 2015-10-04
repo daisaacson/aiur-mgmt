@@ -1,4 +1,4 @@
-#!/usr/bin/env /usr/bin/python
+#!/usr/bin/env python
 __version__ = 0.1
 import sys, re, time, os, subprocess, itertools
 from optparse import OptionParser, OptionGroup
@@ -12,7 +12,7 @@ norecurse = ['mx', 'ns', 'soa']
 
 # 1 list of 8 dns records, each dns record contains a list of record items
 ## [['owner-name', 'ttl', 'class', 'a',     'ipv4'                                                           ],
-##  ['name',       'ttl', 'class', 'aaaa',  'ipv6'                                                           ], 
+##  ['name',       'ttl', 'class', 'aaaa',  'ipv6'                                                           ],
 ##  ['name',       'ttl', 'class', 'cname', 'cononical name'                                                 ],
 ##  ['owner-name', 'ttl', 'class', 'dname', 'redirection-name'                                               ],
 ##  ['owner-name', 'ttl', 'class', 'mx',    'pref',            'name'                                        ],
@@ -43,15 +43,15 @@ def dnssearch (search):
       if options.verbose: print "found: ", dnsrecord
       # If we have a match that we haven't found before
       if not dnsrecord in results:
-        if options.verbose: print "adding: ", dnsrecord 
+        if options.verbose: print "adding: ", dnsrecord
         # Add dns record to our results list
         results.append(dnsrecord)
         if options.recursive and dnsrecord[3] not in norecurse:
-          # For the found dns record, use the first and last record item to recusivley search for more results
+          # For the found dns record, use the first and last record item to recusivley search for more results.
           dnssearch(dnsrecord[0])
           dnssearch(dnsrecord[-1])
         # If dns record is an a record, search for ptr in the event the forward and reverse names doesn't match
-        if dnsrecord[3] == 'a':
+        if options.recursive and dnsrecord[3] == 'a':
           arpa = get_arpa_address(dnsrecord[-1])
           if options.verbose: print "need to find ptr", arpa
           dnssearch(arpa)
@@ -71,11 +71,11 @@ def mtime(f):
 # Run rndc and wait for dumpfile to be output
 def rndc():
   o = ""
-  # Last modification of DUMPFILE
+  # Last modification of DUMPFILE, used to make sure we don't look at an old file
   ftime = mtime(DUMPFILE)
   # Tell named to create a dump file of zones
   try:
-    subprocess.Popen(['rndc', 'dumpdb', '-zones'])
+    subprocess.Popen(['/usr/sbin/rndc', 'dumpdb', '-zones'])
   except:
     raise
   # Start time
@@ -85,7 +85,7 @@ def rndc():
   ## We read the end of line of old dump file and it reads "; Dump complete"
   ## named then starts writing to the dump file, not completing the dump, causing the conditon to pass
   ## Therefore, these two test need to be independent
-  # Wait for DUMPFILE to be modified
+  # Wait for DUMPFILE to be modified and dump to complete
   while not mtime(DUMPFILE) > ftime:
     time.sleep(0.001)
     # Timeout if we are waiting too long
@@ -139,8 +139,8 @@ def getrecords():
       # Read all dnsrecords that don't begin with ';'
       ## Set line to lower. Makes for easier recursive serches
       ## Strips white space from beginning and end of line
-      ## Split words into list. 
-      ### dnsrecords is a list of recod lists
+      ## Split words into list.
+      ### dnsrecords is a list of record lists
       dnsrecords = [line.lower().strip().split() for line in dumpfile if not line.startswith(';')]
       if options.debug: print dnsrecords
     dumpfile.close()
@@ -173,7 +173,7 @@ def main(a):
     regex = re.compile(SEARCH+'\.$', re.I)
     for dnsrecord in dnsrecords:
       if regex.search(dnsrecord[0]): results.append(dnsrecord)
-  else: 
+  else:
     # Search first and last record item of all the dns records using regular expression
     ## Save record item to list of recorditmes
     recorditems =  [line[0]  for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[0])]
@@ -219,7 +219,7 @@ if __name__ == '__main__':
   parser.add_option("-s", "--sort", action="store_true", help="Sort output by FQDN")
   parser.add_option("-z", "--zone", action="store_true", default=False, help="Print zone content")
   group = OptionGroup(parser, "Debug Options")
-  group.add_option("-v", "--verbose", action="store_true", help="Print Verbose") 
+  group.add_option("-v", "--verbose", action="store_true", help="Print Verbose")
   group.add_option("-D", "--debug", action="store_true", help="Print debug")
   parser.add_option_group(group)
   (options, args) = parser.parse_args()
