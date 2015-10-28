@@ -1,5 +1,5 @@
 Name: aiur-mgmt
-Version: 0.4.3
+Version: 0.4.4
 Release: 1%{?dist}
 Summary: Aiur Management
 
@@ -31,6 +31,7 @@ install -pm 0755 forced-commands.sh $RPM_BUILD_ROOT%{_bindir}/forced-commands
 install -pm 0755 sslComponent.py $RPM_BUILD_ROOT%{_bindir}/assl
 install -pm 0755 dnssearch.py $RPM_BUILD_ROOT%{_bindir}/dnssearch
 install -pm 0755 modem-status.py $RPM_BUILD_ROOT%{_bindir}/modem-status
+install -pm 0755 mping.sh $RPM_BUILD_ROOT%{_bindir}/mping
 
 
 %files
@@ -39,6 +40,8 @@ install -pm 0755 modem-status.py $RPM_BUILD_ROOT%{_bindir}/modem-status
 
 
 %changelog
+* Tue Oct 27 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.4-1
+- Added mping script
 * Sat Sep 5 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.3-1
 - dnssearch updates
 * Fri Jul 10 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.2-1
