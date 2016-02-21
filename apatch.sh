@@ -164,7 +164,7 @@ function main ()
     if [[ $REBOOT -eq 1 && $RETVAL -eq 0 ]]; then
         patchprint "Rebooting...";
         patchprint "OKAY";
-        reboot;
+        shutdown -r 1 "Reboot after patching";
     fi
 }
 
