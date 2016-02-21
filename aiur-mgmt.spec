@@ -1,5 +1,5 @@
 Name: aiur-mgmt
-Version: 0.4.4
+Version: 0.4.5
 Release: 1%{?dist}
 Summary: Aiur Management
 
@@ -40,6 +40,8 @@ install -pm 0755 mping.sh $RPM_BUILD_ROOT%{_bindir}/mping
 
 
 %changelog
+* Sun Feb 21 2016 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.5-1
+- ayum - added 1 minute reboot delay
 * Tue Oct 27 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.4-1
 - Added mping script
 * Sat Sep 5 2015 daisaacson <49328302+daisaacson@users.noreply.github.com> - 0.4.3-1
