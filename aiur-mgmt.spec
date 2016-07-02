@@ -34,6 +34,7 @@ install -pm 0755 sslComponent.py $RPM_BUILD_ROOT%{_bindir}/assl
 install -pm 0755 dnssearch.py $RPM_BUILD_ROOT%{_bindir}/dnssearch
 install -pm 0755 modem-status.py $RPM_BUILD_ROOT%{_bindir}/modem-status
 install -pm 0755 mping.sh $RPM_BUILD_ROOT%{_bindir}/mping
+# Dynamic CA only available in RHEL 6 and newer
 %if 0%{?rhel} >= 6 
   install -pm 0444 aiur-root.crt $RPM_BUILD_ROOT%{_sysconfdir}/pki/ca-trust/source/anchors/aiur-root.crt
 %endif
@@ -42,28 +43,32 @@ install -pm 0755 mping.sh $RPM_BUILD_ROOT%{_bindir}/mping
 %pre
 # CentOS 6 has to have Dynamic CA enabled
 %if 0%{?rhel} == 6 
-  %if 0%{?version} < 0.4.6
-    if [ $1 -eq 2 ]; then	# if upgrading %{name} from a pervious version where we didn't enable Dynamic CA, enable it
+  if [ $1 -eq 1 ]; then	# if installing for the first time
+    %{_bindir}/update-ca-trust enable
+  elif [ $1 -gt 1 ]	# if upgrading
+    # Get current version of %{name}
+    INITIAL_CA_RELEASE="0.4.6"
+    CURRENT_RPM_VERSION=$(rpm -q --queryformat '%{VERSION}' %{name} 2>/dev/null)
+    # If upgrading from < 0.4.6, enable Dynamic CA
+    # We don't enable Dynamic CA if upgrading from > 0.4.6 because either
+    ## a. it was enabled when it was installed for the first time
+    ## b. the system admin disabled Dynamic CA for some reason, and we don't want to blindly keep re-enabling it
+    if [ $(echo -e "$INITIAL_CA_RELEASE\n$CURRENT_RPM_VERSION" | sort -V | tail -1) == "$INITIAL_CA_RELEASE" ]; then
       %{_bindir}/update-ca-trust enable
     fi 
-  %endif
+  fi
 %endif
-
 
 
 %post
+# Dynamic CA only available in RHEL 6 and newer
 %if 0%{?rhel} >= 6 
   %{_bindir}/update-ca-trust
-%endif
-# CentOS 6 has to have Dynamic CA enabled
-%if 0%{?rhel} == 6 
-  if [ $1 -eq 1 ]; then # if installing, enable Dynamic CA
-    %{_bindir}/update-ca-trust enable
-  fi 
 %endif
 
 
 %postun
+# Dynamic CA only available in RHEL 6 and newer
 %if 0%{?rhel} >= 6 
   %{_bindir}/update-ca-trust
 %endif
