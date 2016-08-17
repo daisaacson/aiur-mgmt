@@ -111,22 +111,30 @@ def listmaxcollen(l):
   return [max(a) for a in itertools.izip_longest(*tl)]
 
 # Print results in a grid form
-def printresults(rs):
-  columnlengths=listmaxcollen(rs)
-  # Adjust columnlengths with mx records
-  if len(columnlengths) == 6:
-    columnlengths[4] = 2
-  if options.debug: print rs, columnlengths
-  for i, result in enumerate(rs):
-    # Print line numbers
-    print str(i+1).rjust(len(str(len(rs))))+":",
+def printresults(results):
+  # Print our findings
+  if options.verbose: print results
+  print "Results on", os.uname()[1], "for:", SEARCH
+  if results:
+    if options.sort: results = sorted(results, key=lambda x: x[0].split('.')[::-1])
+    columnlengths = listmaxcollen(results)
     # Adjust columnlengths with mx records
-    if len(columnlengths) == 6 and result[3] != 'mx':
-      result.insert(4, '')
-    # Print each column entry
-    for j, r in enumerate(result):
-      print r.ljust(columnlengths[j]),
-    print
+    if len(columnlengths) == 6:
+       columnlengths[4] = 2
+    if options.debug: print results, columnlengths
+    for i, result in enumerate(results):
+      if type(result) is list:
+        # Print line numbers
+        print str(i+1).rjust(len(str(len(results)))) + ":",
+        if len(columnlengths) == 6 and result[3] != 'mx':
+          result.insert(4, '')
+        # Print each column entry
+        for j, r in enumerate(result):
+          print r.ljust(columnlengths[j]),
+        print
+      else: print str(result)
+  else:
+    print "0: Search for " + SEARCH + " found 0 results"
 
 # Get Records from file
 def getrecords():
@@ -161,19 +169,20 @@ def getrecords():
 def main(a):
   global dnsrecords
   global DUMPFILE
+  global SEARCH
   SEARCH = a[0]
   DUMPFILE = a[1]
 
-  dnsrecords = getrecords()
-
-  # Create regex object
-  regex = re.compile(SEARCH, re.I)
-
   if options.zone:
-    regex = re.compile(SEARCH+'\.$', re.I)
-    for dnsrecord in dnsrecords:
-      if regex.search(dnsrecord[0]): results.append(dnsrecord)
+    filecontents = open(DUMPFILE).read()
+    zone = re.findall(";\ Zone\ dump\ of\ '" + SEARCH + "\/IN\/.*?\n;.*?;", filecontents, re.DOTALL)
+    for z in zone:
+      results.append(z)
   else:
+    dnsrecords = getrecords()
+
+    # Create regex object
+    regex = re.compile(SEARCH, re.I)
     # Search first and last record item of all the dns records using regular expression
     ## Save record item to list of recorditmes
     recorditems =  [line[0]  for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[0])]
@@ -193,15 +202,8 @@ def main(a):
         results.append(["Error: Too many results:", e[0]])
       except:
         results.append(["Error:", sys.exc_info()[1]])
+  printresults(results)
 
-  # Print our findings
-  if options.verbose: print results
-  print "Results on", os.uname()[1], "for:", SEARCH
-  if results:
-    if options.sort: printresults(sorted(results, key=lambda x: x[0].split('.')[::-1]))
-    else: printresults(results)
-  else:
-    print "0: Search for " + SEARCH + " found 0 results"
 
 if __name__ == '__main__':
   description = "DNS Searcher"
@@ -213,7 +215,7 @@ if __name__ == '__main__':
   parser.set_defaults(dumpdb=True)
   parser.set_defaults(recursive=True)
   parser.add_option("-d", "--dumpdb", action="store_true", help="Run rndc --dumpdb to get latest file")
-  parser.add_option("-n", "--no-dumpdb", action="store_false", dest="dumpdb", help="Run rndc --dumpdb to get latest file")
+  parser.add_option("-n", "--no-dumpdb", action="store_false", dest="dumpdb", help="Don't run rndc --dumpdb to get latest file")
   parser.add_option("-r", "--recursive", action="store_true", help="For each result, search for additional matches")
   parser.add_option("-R", "--nonrecursive", action="store_false", dest="recursive", help="Do not recursivly search for mor matches")
   parser.add_option("-s", "--sort", action="store_true", help="Sort output by FQDN")
