@@ -125,7 +125,7 @@ def printresults(results):
     for i, result in enumerate(results):
       if type(result) is list:
         # Print line numbers
-        print str(i+1).rjust(len(str(len(results)))) + ":",
+        if options.linenumbers: print str(i+1).rjust(len(str(len(results)))) + ":",
         if len(columnlengths) == 6 and result[3] != 'mx':
           result.insert(4, '')
         # Print each column entry
@@ -187,11 +187,16 @@ def main(a):
     ## Save record item to list of recorditmes
     recorditems =  [line[0]  for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[0])]
     recorditems += [line[-1] for line in dnsrecords if len(line) > 4 and line[3] in rrtypes and regex.search(line[-1])]
+    # Check to see if SEARCH item could be matched by a wildcard entry
+    wildcard=SEARCH.split('.')
+    while len(wildcard) > 2:
+      recorditems += ["*." + '.'.join(wildcard[1:]) + "."]
+      wildcard.pop(0)
     # If the SEARCH items is an IP, look for in-addr.arpa record
     regex_ip = re.compile('^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
     if regex_ip.match(SEARCH):
       recorditems += [get_arpa_address(SEARCH)]
-
+    
     # For each record item, start a search for dns records
     if options.verbose: print set(recorditems)
     for recorditem in set(recorditems):
@@ -215,6 +220,7 @@ if __name__ == '__main__':
   parser.set_defaults(dumpdb=True)
   parser.set_defaults(recursive=True)
   parser.add_option("-d", "--dumpdb", action="store_true", help="Run rndc --dumpdb to get latest file")
+  parser.add_option("-l", "--line-numbers", action="store_true", default=False, dest="linenumbers", help="Print line numbers")
   parser.add_option("-n", "--no-dumpdb", action="store_false", dest="dumpdb", help="Don't run rndc --dumpdb to get latest file")
   parser.add_option("-r", "--recursive", action="store_true", help="For each result, search for additional matches")
   parser.add_option("-R", "--nonrecursive", action="store_false", dest="recursive", help="Do not recursivly search for mor matches")
